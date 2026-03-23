@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>산염기 지시약 반응 시뮬레이션</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s;z-index:10;}
+.screen.hidden{opacity:0;pointer-events:none;}
+#cover{background:#f0f4ff;cursor:pointer;}
+#cover-deco{position:absolute;inset:0;overflow:hidden;}
+#cover-deco::before{content:'';position:absolute;inset:0;background-image:linear-gradient(#c8d8f0 1px,transparent 1px),linear-gradient(90deg,#c8d8f0 1px,transparent 1px);background-size:40px 40px;opacity:.5;}
+#cover-stripe{position:absolute;top:0;left:0;right:0;height:8px;background:linear-gradient(90deg,#1565c0,#1e88e5,#42a5f5);}
+#cover-stripe-b{position:absolute;bottom:0;left:0;right:0;height:8px;background:linear-gradient(90deg,#42a5f5,#1e88e5,#1565c0);}
+#cover-content{position:relative;text-align:center;padding:40px 60px;background:rgba(255,255,255,.85);border-radius:20px;border:2px solid #90caf9;box-shadow:0 8px 40px #1565c022;}
+.cover-badge{display:inline-block;background:#1565c0;color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;padding:5px 18px;border-radius:20px;margin-bottom:18px;}
+#cover-title{font-size:clamp(26px,4vw,56px);font-weight:900;color:#0d2a6e;letter-spacing:2px;line-height:1.2;margin-bottom:10px;}
+#cover-sub{font-size:clamp(12px,1.4vw,19px);color:#1565c0;margin-bottom:6px;font-weight:500;}
+#cover-formula{font-size:clamp(11px,1.2vw,16px);color:#5c7caa;margin-bottom:32px;letter-spacing:1px;}
+#cover-touch{font-size:clamp(13px,1.3vw,18px);color:#1565c0;border:2px solid #1565c0;border-radius:30px;padding:12px 36px;display:inline-block;animation:pulse 2s infinite;background:rgba(21,101,192,.06);}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 #1565c044;}50%{opacity:.7;box-shadow:0 0 0 14px #1565c000;}}
+#flask-l,#flask-r{position:absolute;top:50%;transform:translateY(-50%);opacity:.13;}
+#flask-l{left:40px;}#flask-r{right:40px;}
+#guide{background:#f0f4ff;cursor:pointer;padding:40px 60px;}
+#guide::before{content:'';position:absolute;inset:0;background-image:linear-gradient(#c8d8f0 1px,transparent 1px),linear-gradient(90deg,#c8d8f0 1px,transparent 1px);background-size:40px 40px;opacity:.35;pointer-events:none;}
+#guide-stripe{position:absolute;top:0;left:0;right:0;height:8px;background:linear-gradient(90deg,#1565c0,#1e88e5,#42a5f5);}
+#guide-stripe-b{position:absolute;bottom:0;left:0;right:0;height:8px;background:linear-gradient(90deg,#42a5f5,#1e88e5,#1565c0);}
+#guide-inner{position:relative;max-width:900px;width:100%;background:rgba(255,255,255,.9);border-radius:16px;border:1.5px solid #90caf9;padding:32px 40px;box-shadow:0 4px 30px #1565c018;}
+#guide-title{font-size:clamp(16px,2vw,26px);font-weight:800;color:#0d2a6e;margin-bottom:24px;text-align:center;}
+.guide-row{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;opacity:0;transform:translateY(14px);transition:opacity .5s,transform .5s;}
+.guide-row.show{opacity:1;transform:none;}
+.guide-num{min-width:40px;height:40px;border-radius:50%;background:#1565c0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;color:#fff;flex-shrink:0;}
+.guide-body h4{font-size:clamp(12px,1.3vw,17px);font-weight:700;color:#0d2a6e;margin-bottom:4px;}
+.guide-body p{font-size:clamp(11px,1vw,14px);color:#3a5a8a;line-height:1.7;}
+.guide-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.chip{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;color:#fff;}
+#guide-next{margin-top:20px;text-align:center;font-size:clamp(12px,1.1vw,16px);color:#1565c0;border:2px solid #1565c0;border-radius:30px;padding:10px 32px;display:inline-block;animation:pulse 2s infinite;}
+#sim{background:#06061a;flex-direction:column;z-index:5;}
+#sim-topbar{flex:0 0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:start;padding:28px 16px 6px;gap:12px;width:100%;position:relative;}
+#sim-title h3{color:#fff;font-size:clamp(13px,1.4vw,20px);font-weight:700;margin:0;text-align:center;}
+#lbl{font-size:clamp(11px,1.1vw,14px);color:#FFB347;min-height:18px;text-align:center;margin-top:3px;}
+.panel{background:#0d1a2e;border:1px solid #2a3a5a;border-radius:14px;padding:14px 16px;}
+.panel-title{font-size:14px;color:#7799cc;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:700;}
+.ind-btn{display:block;width:100%;text-align:left;padding:14px 22px;font-size:clamp(16px,1.8vw,26px);font-weight:700;border:2px solid #2a3a5a;border-radius:10px;cursor:pointer;color:#aaa;background:none;margin-bottom:8px;}
+.ind-btn:last-child{margin-bottom:0;}
+.ind-btn.active{color:#fff;border-color:#4488cc;background:#1a2a44;}
+.reagent-btn{display:block;width:100%;text-align:left;padding:14px 22px;font-size:clamp(16px,1.8vw,26px);font-weight:700;border:2px solid #2a3a5a;border-radius:10px;cursor:pointer;color:#fff;margin-bottom:8px;}
+.reagent-btn:last-child{margin-bottom:0;}
+#sim-mid{flex:1 1 auto;display:flex;align-items:center;justify-content:center;gap:12px;min-height:0;padding:0 12px 10px;width:100%;}
+#cv{display:block;border-radius:10px;background:#07071a;}
+.side-btn{width:48px;height:48px;border-radius:50%;border:2px solid #2a3a5a;background:#0d1a2e;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;color:#aac4ff;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div id="cover" class="screen" onclick="gotoGuide()">
+  <div id="cover-deco"><div id="cover-stripe"></div><div id="cover-stripe-b"></div></div>
+  <svg id="flask-l" width="160" height="220" viewBox="0 0 160 220"><path d="M55 10 h50 v80 l40 110 H15 L55 90 Z" fill="none" stroke="#1565c0" stroke-width="6" stroke-linejoin="round"/><ellipse cx="80" cy="180" rx="35" ry="18" fill="#1565c0" opacity=".5"/><path d="M50 10 h60" stroke="#1565c0" stroke-width="5" stroke-linecap="round"/></svg>
+  <div id="cover-content">
+    <div class="cover-badge">SCIENCE EXHIBIT · 과학 전시</div>
+    <div id="cover-title">산염기 지시약<br>반응 시뮬레이션</div>
+    <div id="cover-sub">Acid-Base Indicator Reaction Simulation</div>
+    <div id="cover-formula">HCl · H₂O · Ca(OH)₂ &nbsp;×&nbsp; 페놀프탈레인 · 리트머스 · BTB</div>
+    <div id="cover-touch">화면을 터치하여 시작 ▶</div>
+  </div>
+  <svg id="flask-r" width="160" height="220" viewBox="0 0 160 220"><path d="M55 10 h50 v80 l40 110 H15 L55 90 Z" fill="none" stroke="#1565c0" stroke-width="6" stroke-linejoin="round"/><ellipse cx="80" cy="180" rx="35" ry="18" fill="#e91e8c" opacity=".5"/><path d="M50 10 h60" stroke="#1565c0" stroke-width="5" stroke-linecap="round"/></svg>
+</div>
+
+<div id="guide" class="screen hidden" onclick="gotoSim()">
+  <div id="guide-stripe"></div><div id="guide-stripe-b"></div>
+  <div id="guide-inner">
+    <div id="guide-title">🔬 사용 방법</div>
+    <div class="guide-row" id="gr1"><div class="guide-num">1</div><div class="guide-body"><h4>지시약을 선택하세요 (왼쪽 패널)</h4><p>지시약마다 산성·중성·염기성에서 다른 색으로 변합니다.</p><div class="guide-chips"><span class="chip" style="background:#cc0077;">페놀프탈레인 — 무색 → 진분홍</span><span class="chip" style="background:#993300;">리트머스 — 빨강 ↔ 파랑</span><span class="chip" style="background:#117744;">BTB — 노랑 ↔ 파랑</span></div></div></div>
+    <div class="guide-row" id="gr2"><div class="guide-num">2</div><div class="guide-body"><h4>반응물을 선택하세요 (오른쪽 패널)</h4><p>분자들이 실시간으로 접근하며 반응 과정을 보여줍니다.</p><div class="guide-chips"><span class="chip" style="background:#7a4408;">염산 HCl — 산성 (무변화)</span><span class="chip" style="background:#0d3d7a;">증류수 H₂O — 중성</span><span class="chip" style="background:#0d4a1a;">석회수 Ca(OH)₂ — 염기성 (색 변화)</span></div></div></div>
+    <div class="guide-row" id="gr3"><div class="guide-num">3</div><div class="guide-body"><h4>3D 분자를 자유롭게 조작하세요</h4><p>드래그 → 360° 회전 &nbsp;|&nbsp; 스크롤·핀치 → 확대/축소<br>⏸ 버튼 → 자동 회전 정지 &nbsp;|&nbsp; ↺ 버튼 → 초기 화면으로</p></div></div>
+    <div class="guide-row" id="gr4"><div class="guide-num" style="background:#c0392b;">!</div><div class="guide-body"><h4>1분간 조작이 없으면 처음 화면으로 자동 복귀합니다</h4><p>전시 중 아무 터치나 클릭하면 타이머가 초기화됩니다.</p></div></div>
+    <div style="text-align:center;"><div id="guide-next">화면을 터치하면 시뮬레이션을 시작합니다 ▶</div></div>
+  </div>
+</div>
+
+<div id="sim" class="screen hidden">
+  <div id="sim-topbar">
+    <div class="panel" style="justify-self:start;margin-top:10px;">
+      <div class="panel-title">지시약 선택</div>
+      <button class="ind-btn active" onclick="selectIndicator('ph')" id="ind-ph">페놀프탈레인</button>
+      <button class="ind-btn" onclick="selectIndicator('lit')" id="ind-lit">리트머스</button>
+      <button class="ind-btn" onclick="selectIndicator('btb')" id="ind-btb">BTB</button>
+    </div>
+    <div id="sim-title" style="margin-top:10px;">
+      <h3>산염기 지시약 반응 시뮬레이션</h3>
+      <div id="lbl">반응물을 선택하세요</div>
+    </div>
+    <div class="panel" style="justify-self:end;margin-top:10px;">
+      <div class="panel-title">물질 선택</div>
+      <button class="reagent-btn" style="background:#7a4a08;border-color:#b87010;" onclick="runScene('acid')">염산 HCl</button>
+      <button class="reagent-btn" style="background:#0d3d7a;border-color:#1565c0;" onclick="runScene('water')">증류수 H&#8322;O</button>
+      <button class="reagent-btn" style="background:#0d4a1a;border-color:#2e7d32;" onclick="runScene('base')">석회수 Ca(OH)&#8322;</button>
+    </div>
+  </div>
+  <div id="sim-mid">
+    <button class="side-btn" id="btnRot" onclick="toggleRot()">&#9208;</button>
+    <canvas id="cv"></canvas>
+    <button class="side-btn" onclick="forceReset()" style="width:auto;padding:0 16px;gap:6px;flex-direction:column;font-size:11px;color:#aac4ff;border-radius:24px;">
+      <span style="font-size:20px;">&#8634;</span>
+      <span>새로고침</span>
+    </button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+let currentScreen='cover',idleTimer=null;
+const IDLE_MS=60000;
+function resetIdle(){clearTimeout(idleTimer);if(currentScreen==='sim')idleTimer=setTimeout(gotoCover,IDLE_MS);}
+['click','touchstart','mousemove','keydown'].forEach(ev=>document.addEventListener(ev,resetIdle,{passive:true}));
+function showScreen(id){['cover','guide','sim'].forEach(s=>document.getElementById(s).classList.toggle('hidden',s!==id));currentScreen=id;}
+function gotoCover(){clearTimeout(idleTimer);gen++;wipe();bPh();camera.position.copy(CAM_DEF);root.rotation.set(0,0,0);showScreen('cover');}
+function gotoGuide(){showScreen('guide');['gr1','gr2','gr3','gr4'].forEach((id,i)=>setTimeout(()=>document.getElementById(id).classList.add('show'),150+i*250));}
+function gotoSim(){showScreen('sim');resizeCanvas();resetIdle();}
+
+const IND={
+  ph:{acidC:0xcccccc,baseC:0xff1493,neutC:0xcccccc,acidO:0xff5555,baseO:0xff69b4,neutO:0xff5555,acidB:0x888899,baseB:0xcc0077,neutB:0x888899,acidLbl:'무색 (Lactone)',baseLbl:'진분홍 (Quinoid)',neutLbl:'무색 유지'},
+  lit:{acidC:0xff3333,baseC:0x4466ff,neutC:0x9933cc,acidO:0xff6644,baseO:0x6688ff,neutO:0xcc66ff,acidB:0xcc2211,baseB:0x2244cc,neutB:0x7722aa,acidLbl:'빨간색',baseLbl:'파란색',neutLbl:'보라색'},
+  btb:{acidC:0xddaa00,baseC:0x1177cc,neutC:0x22aa55,acidO:0xffcc00,baseO:0x44aaff,neutO:0x44dd88,acidB:0xaa8800,baseB:0x0055aa,neutB:0x118844,acidLbl:'노란색',baseLbl:'파란색',neutLbl:'초록색'},
+};
+let curInd='ph';
+function selectIndicator(key){curInd=key;document.querySelectorAll('.ind-btn').forEach(b=>b.classList.remove('active'));document.getElementById('ind-'+key).classList.add('active');forceReset();}
+
+const CAM_DEF=new THREE.Vector3(0,4,22);
+const cv=document.getElementById('cv');
+function resizeCanvas(){const top=document.getElementById('sim-topbar').offsetHeight;const availW=window.innerWidth-120,availH=window.innerHeight-top-20;let w=availW,h=Math.round(w*10/16);if(h>availH){h=availH;w=Math.round(h*16/10);}cv.width=w;cv.height=h;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
+
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+renderer.setClearColor(0x06061a,1);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(42,16/10,0.1,300);
+camera.position.copy(CAM_DEF);
+scene.add(new THREE.AmbientLight(0xffffff,0.6));
+const sun=new THREE.DirectionalLight(0xffffff,1);sun.position.set(8,10,10);scene.add(sun);
+const pt=new THREE.PointLight(0x88aaff,0.7,100);pt.position.set(-8,8,6);scene.add(pt);
+const root=new THREE.Group();scene.add(root);
+let objs=[],ph=null,gen=0,autoRot=true;
+function add(o){root.add(o);objs.push(o);}
+function wipe(){objs.forEach(o=>root.remove(o));objs=[];ph=null;}
+function toggleRot(){autoRot=!autoRot;const b=document.getElementById('btnRot');b.innerHTML=autoRot?'&#9208;':'&#9654;';b.style.color=autoRot?'#aac4ff':'#88ffaa';}
+
+function sp(r,col,shine=130){return new THREE.Mesh(new THREE.SphereGeometry(r,18,18),new THREE.MeshPhongMaterial({color:col,shininess:shine,specular:0xffffff}));}
+function cy(col){return new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,1,9),new THREE.MeshPhongMaterial({color:col,shininess:40}));}
+function fc(c,a,b){c.position.copy(a.clone().lerp(b,.5));c.scale.set(1,a.distanceTo(b),1);c.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),b.clone().sub(a).normalize());}
+function ease(t){return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;}
+function lh(a,b,t){const f=(x,y)=>Math.round(x+(y-x)*t);return(f(a>>16&255,b>>16&255)<<16)|(f(a>>8&255,b>>8&255)<<8)|f(a&255,b&255);}
+function mv(g,tx,ty,tz,ms,cb){const sx=g.position.x,sy=g.position.y,sz=g.position.z,t0=performance.now(),id=gen;(function s(){if(gen!==id)return;const p=Math.min((performance.now()-t0)/ms,1),e=ease(p);g.position.set(sx+(tx-sx)*e,sy+(ty-sy)*e,sz+(tz-sz)*e);if(p<1)requestAnimationFrame(s);else if(cb)cb();})();}
+function sc(g,ts,ms,cb){const s0=g.scale.x,t0=performance.now(),id=gen;(function s(){if(gen!==id)return;const p=Math.min((performance.now()-t0)/ms,1),e=ease(p);const v=s0+(ts-s0)*e;g.scale.set(v,v,v);if(p<1)requestAnimationFrame(s);else if(cb)cb();})();}
+function shk(g,cb){const id=gen,ox=g.position.x,oy=g.position.y;let t=0;const iv=setInterval(()=>{if(gen!==id){clearInterval(iv);return;}t+=.3;g.position.x=ox+Math.sin(t*8)*.12;g.position.y=oy+Math.cos(t*7)*.1;if(t>3){clearInterval(iv);g.position.x=ox;g.position.y=oy;if(cb)cb();}},16);}
+function fadeOut(g,ms,cb){sc(g,0,ms,()=>{root.remove(g);if(cb)cb();});}
+function makeLabel(text,col){const c=document.createElement('canvas');c.width=256;c.height=64;const ctx=c.getContext('2d');ctx.font='bold 26px Arial';ctx.fillStyle=col||'#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,128,32);const tex=new THREE.CanvasTexture(c);const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false});const s=new THREE.Sprite(mat);s.scale.set(2.2,.55,1);return s;}
+function withLabel(g,text,col,dy){const l=makeLabel(text,col);l.position.set(0,dy||1.1,0);g.add(l);return g;}
+
+function bHCl(x,y,z){const g=new THREE.Group();g.position.set(x,y,z);const H=sp(.22,0xffffff),Cl=sp(.44,0x88dd44);Cl.position.set(1,0,0);const b=cy(0x66bb22);fc(b,H.position,Cl.position);g.add(H,Cl,b);withLabel(g,'HCl','#ccee88',1.0);add(g);return g;}
+function bH3O(x,y,z){const g=new THREE.Group();g.position.set(x,y,z);const O=sp(.38,0xff6633);const H1=sp(.2,0xffffff),H2=sp(.2,0xffffff),H3=sp(.2,0xffffff);H1.position.set(-.6,.5,0);H2.position.set(.6,.5,0);H3.position.set(0,-.7,0);[H1,H2,H3].forEach(H=>{const b=cy(0xcc4411);fc(b,O.position,H.position);g.add(b);});g.add(O,H1,H2,H3);withLabel(g,'H\u2083O\u207a','#ff9966',1.2);add(g);return g;}
+function bClMinus(x,y,z){const g=new THREE.Group();g.position.set(x,y,z);const Cl=sp(.46,0x55cc44,160);g.add(Cl);withLabel(g,'Cl\u207b','#99ee66',0.8);add(g);return g;}
+function bH2O(x,y,z){const g=new THREE.Group();g.position.set(x,y,z);const O=sp(.36,0x4499ff);const H1=sp(.2,0xddddff),H2=sp(.2,0xddddff);H1.position.set(-.65,.55,0);H2.position.set(.65,.55,0);[H1,H2].forEach(H=>{const b=cy(0x3377cc);fc(b,O.position,H.position);g.add(b);});g.add(O,H1,H2);withLabel(g,'H\u2082O','#88ccff',1.1);add(g);return g;}
+function bNa(x,y,z){const g=new THREE.Group();g.position.set(x,y,z);const Na=sp(.40,0xffaa00,150);g.add(Na);withLabel(g,'Na\u207a','#ffcc55',0.8);add(g);return g;}
+function bOH(x,y,z){const g=new THREE.Group();g.position.set(x,y,z);const O=sp(.42,0xff3399),H=sp(.22,0xffffff);H.position.set(0,.9,0);const b=cy(0xcc2288);fc(b,O.position,H.position);g.add(O,H,b);withLabel(g,'OH\u207b','#ff88cc',1.3);add(g);return g;}
+function bCa(x,y,z){const g=new THREE.Group();g.position.set(x,y,z);const Ca=sp(.52,0x44ddaa,160);g.add(Ca);withLabel(g,'Ca\u00b2\u207a','#88ffdd',0.9);add(g);return g;}
+
+const PL=[[0,0,0],[1.2,0,0],[1.8,1.1,0],[.9,2,.5],[-.3,1.4,.2],[-1.5,.8,-.3],[-2.7,1.4,-.5],[-3.8,.6,-.4],[-3.7,-.7,-.1],[-2.5,-1.3,.1],[-1.4,-.5,0],[3.1,1.2,-.2],[3.9,2.3,-.4],[5.2,2.3,-.3],[5.8,1.1,0],[5,0,.2],[3.7,0,.1],[.8,3.3,.8],[1.6,4.4,.6],[.9,5.5,.8],[-.5,5.5,1.1],[-1.3,4.4,1.3],[-.6,3.3,1.1],[1.6,6.6,.6],[-.5,-1,-.3]];
+const PQ=[[0,0,0],[1.1,.8,0],[2.3,.4,0],[2.8,-.9,0],[1.8,-1.9,0],[-1.3,-.6,0],[-2.5,.1,0],[-3.7,-.6,0],[-3.8,-1.9,0],[-2.6,-2.6,0],[-1.4,-1.9,0],[3.6,1.2,0],[4.9,.9,0],[5.6,-.3,0],[4.9,-1.5,0],[3.6,-1.2,0],[2.8,-.1,0],[2.6,-3.1,0],[1.8,-4.3,0],[.4,-4.4,0],[-.3,-3.3,0],[.4,-2.1,0],[1.8,-2,0],[-.3,-5.6,0],[-.5,.9,0]];
+const PT_PH=["C","O","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","O","O"];
+const PB_PH=[[0,1],[1,2],[2,3],[3,4],[4,0],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,5],[2,11],[11,12],[12,13],[13,14],[14,15],[15,16],[16,11],[3,17],[17,18],[18,19],[19,20],[20,21],[21,22],[22,17],[19,23],[0,24]];
+const LIT_A=[[0,0,0],[1.2,.7,0],[2.4,.7,0],[3,0,0],[2.4,-.7,0],[1.2,-.7,0],[5.2,.7,0],[6.4,.7,0],[7,0,0],[6.4,-.7,0],[5.2,-.7,0],[4.6,0,0],[4.1,.8,0],[4.1,-.8,0],[-.6,0,0],[7.6,0,0]];
+const LIT_B=[[0,0,.3],[1.2,.7,.2],[2.4,.7,.1],[3,0,0],[2.4,-.7,-.1],[1.2,-.7,-.2],[5.2,.7,-.1],[6.4,.7,-.2],[7,0,-.3],[6.4,-.7,-.2],[5.2,-.7,-.1],[4.6,0,0],[4.1,.9,.2],[4.1,-.9,-.2],[-.6,0,.3],[7.6,0,-.3]];
+const LIT_T=["C","C","C","C","C","C","C","C","C","C","C","C","N","O","O","O"];
+const LIT_B2=[[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[6,7],[7,8],[8,9],[9,10],[10,11],[11,6],[11,12],[12,1],[11,13],[13,4],[0,14],[8,15]];
+const BTB_A=[[0,0,0],[-1.3,.8,0],[-2.5,.8,0],[-3.2,0,0],[-2.5,-.8,0],[-1.3,-.8,0],[-0.7,0,0],[1.3,.8,0],[2.5,.8,0],[3.2,0,0],[2.5,-.8,0],[1.3,-.8,0],[.7,0,0],[0,-1.4,0],[-1.2,-2.1,0],[-1.2,-3.3,0],[0,-4.0,0],[1.2,-3.3,0],[1.2,-2.1,0],[-3.5,1.8,0],[3.5,1.8,0],[0,-5.2,0],[-4.2,0,0],[4.2,0,0]];
+const BTB_B=[[0,0,0],[-1.3,.8,0],[-2.5,.8,0],[-3.1,0,0],[-2.5,-.8,0],[-1.3,-.8,0],[-.6,0,0],[1.3,.8,0],[2.5,.8,0],[3.1,0,0],[2.5,-.8,0],[1.3,-.8,0],[.6,0,0],[0,-1.5,0],[-1.2,-2.2,0],[-1.2,-3.5,0],[0,-4.2,0],[1.2,-3.5,0],[1.2,-2.2,0],[-3.4,1.9,0],[3.4,1.9,0],[0,-5.4,0],[-4.1,0,0],[4.1,0,0]];
+const BTB_T=["C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","Br","Br","O","O","O"];
+const BTB_BND=[[0,6],[6,1],[1,2],[2,3],[3,4],[4,5],[5,6],[0,12],[12,7],[7,8],[8,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[16,17],[17,18],[18,13],[2,19],[8,20],[16,21],[3,22],[9,23]];
+const MOL_DATA={
+  ph:{acidCoords:PL,baseCoords:PQ,types:PT_PH,bonds:PB_PH,sizeC:.26,sizeSpec:{O:.38},specTypes:['O']},
+  lit:{acidCoords:LIT_A,baseCoords:LIT_B,types:LIT_T,bonds:LIT_B2,sizeC:.26,sizeSpec:{N:.34,O:.36},specTypes:['N','O']},
+  btb:{acidCoords:BTB_A,baseCoords:BTB_B,types:BTB_T,bonds:BTB_BND,sizeC:.26,sizeSpec:{O:.34,Br:.46},specTypes:['O','Br']},
+};
+const SPEC_COL={Br:{acid:0xbb6600,base:0x884400},N:{acid:0x4488ff,base:0x2255cc},O:{acid:0xff5555,base:0xff69b4}};
+
+function bPh(){
+  const ind=IND[curInd],mol=MOL_DATA[curInd];
+  const g=new THREE.Group();g.position.set(-2.5,0,0);
+  const ms=mol.acidCoords.map(([x,y,z],i)=>{const t=mol.types[i];const isSpec=mol.specTypes.includes(t);const r=isSpec?(mol.sizeSpec[t]||.30):mol.sizeC;const col=isSpec?(SPEC_COL[t]?.acid||ind.acidO):ind.acidC;const m=sp(r,col);m.position.set(x,y,z);g.add(m);return m;});
+  const cs=mol.bonds.map(([i,j])=>{const c=cy(ind.acidB);fc(c,ms[i].position,ms[j].position);g.add(c);return{c,i,j};});
+  add(g);ph={g,ms,cs};
+}
+function morph(toBase,cb){
+  const ind=IND[curInd],mol=MOL_DATA[curInd],id=gen,dur=1600,t0=performance.now(),init=ph.ms.map(m=>m.position.clone());
+  const toCoords=toBase?mol.baseCoords:mol.acidCoords;
+  (function s(){if(gen!==id)return;const t=Math.min((performance.now()-t0)/dur,1),e=ease(t);
+    ph.ms.forEach((m,i)=>{m.position.lerpVectors(init[i],new THREE.Vector3(...toCoords[i]),e);const tp=mol.types[i],isSpec=mol.specTypes.includes(tp);const fromC=isSpec?(SPEC_COL[tp]?.acid||ind.acidO):ind.acidC;const toC=isSpec?(SPEC_COL[tp]?.[toBase?'base':'acid']||ind[toBase?'baseO':'neutO']):(toBase?ind.baseC:ind.neutC);m.material.color.setHex(lh(fromC,toC,e));});
+    ph.cs.forEach(({c,i,j})=>{fc(c,ph.ms[i].position,ph.ms[j].position);c.material.color.setHex(lh(ind.acidB,toBase?ind.baseB:ind.neutB,e));});
+    if(t<1)requestAnimationFrame(s);else if(cb)cb();})();
+}
+function colorShift(toC,toO,toB){
+  const id=gen,dur=800,t0=performance.now(),mol=MOL_DATA[curInd];
+  const initC=ph.ms.map(m=>m.material.color.getHex()),initB=ph.cs[0].c.material.color.getHex();
+  (function s(){if(gen!==id)return;const t=Math.min((performance.now()-t0)/dur,1),e=ease(t);
+    ph.ms.forEach((m,i)=>{const tp=mol.types[i],isSpec=mol.specTypes.includes(tp);const dst=isSpec?(SPEC_COL[tp]?.acid||toO):toC;m.material.color.setHex(lh(initC[i],dst,e));});
+    ph.cs.forEach(({c})=>{c.material.color.setHex(lh(initB,toB,e));});
+    if(t<1)requestAnimationFrame(s);})();
+}
+
+const lbl=document.getElementById('lbl');
+function setL(t,c){lbl.style.color=c||'#FFB347';lbl.textContent=t;}
+
+function runScene(env){
+  gen++;wipe();bPh();
+  const ind=IND[curInd];
+  if(env==='acid'){
+    setL('HCl \u2192 H\u2083O\u207a + Cl\u207b 이온 접근 중...','#FFB347');
+    const hcl=bHCl(13,2,2),h3o=bH3O(13,-2,-2),clm=bClMinus(-12,3,-1);
+    mv(hcl,4,2,0,1400,()=>{setL('충돌! \u2014 '+ind.acidLbl,'#ff8844');colorShift(ind.acidC,ind.acidO,ind.acidB);mv(hcl,10,4,3,700,()=>fadeOut(hcl,400));});
+    mv(h3o,4,-2,0,1600,()=>mv(h3o,10,-4,-3,700,()=>fadeOut(h3o,400)));
+    mv(clm,-4,3,0,1500,()=>{setTimeout(()=>{setL('산성 환경 \u2014 '+ind.acidLbl,'#FFB347');mv(clm,-10,4,2,700,()=>fadeOut(clm,400));},400);});
+  }
+  else if(env==='water'){
+    setL('H\u2082O 분자 + Na\u207a 접근 중...','#64CFF5');
+    const w1=bH2O(13,1,1),w2=bH2O(-13,-1,2),w3=bH2O(0,8,-3),na=bNa(-12,-3,-2);
+    mv(w1,4,1,0,1800,()=>mv(w1,11,2,3,800,()=>fadeOut(w1,400)));
+    mv(w2,-5,-1,0,2000,()=>mv(w2,-11,-2,-3,800,()=>fadeOut(w2,400)));
+    mv(w3,0,4,0,1600,()=>mv(w3,2,8,2,800,()=>fadeOut(w3,400)));
+    mv(na,-5,-3,0,1700,()=>{setL('중성 환경 \u2014 '+ind.neutLbl,'#64CFF5');colorShift(ind.neutC,ind.neutO,ind.neutB);mv(na,-11,-5,-2,800,()=>fadeOut(na,400));});
+  }
+  else if(env==='base'){
+    setL('OH\u207b + Ca\u00b2\u207a 이온 접근 중...','#FF69B4');
+    const o1=bOH(13,2,1),o2=bOH(-13,-2,-1),ca=bCa(0,9,3);
+    mv(ca,0,5,0,1400,()=>{setTimeout(()=>mv(ca,2,9,3,600,()=>fadeOut(ca,600)),800);});
+    let cnt=0;
+    function arr(){if(++cnt<2)return;setL('OH\u207b 결합 \u2014 고리 공격!','#ff44aa');let sk=0;
+      function s1(){if(++sk<2)return;setL('구조 변형 중 \u2192 '+ind.baseLbl,'#FF69B4');morph(true,()=>{setL('반응 완료! \u2014 '+ind.baseLbl,'#FF1493');mv(o1,9,5,3,700,()=>fadeOut(o1,400));mv(o2,-10,-5,-2,700,()=>fadeOut(o2,400));});}
+      shk(o1,s1);shk(o2,s1);}
+    mv(o1,2.5,2,0,1500,arr);mv(o2,-4,-2,0,1500,arr);
+  }
+}
+function forceReset(){gen++;wipe();bPh();camera.position.copy(CAM_DEF);root.rotation.set(0,0,0);setL('','#aaa');}
+
+let drag=false,lx=0,ly=0;
+cv.addEventListener('mousedown',e=>{drag=true;lx=e.clientX;ly=e.clientY;});
+window.addEventListener('mouseup',()=>drag=false);
+window.addEventListener('mousemove',e=>{if(!drag)return;root.rotation.y+=(e.clientX-lx)*.013;root.rotation.x+=(e.clientY-ly)*.013;lx=e.clientX;ly=e.clientY;});
+cv.addEventListener('wheel',e=>{camera.position.multiplyScalar(e.deltaY>0?1.08:.93);e.preventDefault();},{passive:false});
+window.addEventListener('resize',resizeCanvas);
+(function loop(){requestAnimationFrame(loop);if(autoRot&&!drag&&currentScreen==='sim')root.rotation.y+=.002;renderer.render(scene,camera);})();
+resizeCanvas();
+bPh();
+</script>
+</body>
+</html>
